@@ -1,0 +1,22 @@
+- name: Pull latest image
+  ansible.builtin.command: docker pull {{ app_image }}
+  changed_when: true
+
+- name: Remove old container if present
+  ansible.builtin.command: docker rm -f devops-app
+  failed_when: false
+  changed_when: false
+
+- name: Run application container
+  ansible.builtin.command: >
+    docker run -d --restart always --name devops-app
+    -p 80:{{ app_port }} {{ app_image }}
+  changed_when: true
+
+- name: Wait for health endpoint
+  ansible.builtin.uri:
+    url: "http://localhost/health"
+  register: health
+  retries: 10
+  delay: 3
+  until: health.status == 200

@@ -1,0 +1,9 @@
+- name: Configure and deploy app
+  hosts: web
+  become: true
+  vars:
+    app_image: "youruser/devops-app:latest"
+    app_port: 8080
+  roles:
+    - docker
+    - app

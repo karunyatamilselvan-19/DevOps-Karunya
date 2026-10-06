@@ -1,0 +1,34 @@
+pipeline {
+  agent any
+  environment {
+    IMAGE = "youruser/devops-app"          // change to your Docker Hub repo
+    TAG   = "${env.BUILD_NUMBER}"
+  }
+  stages {
+    stage('Test') {
+      steps { sh 'cd app && python3 -m unittest -v' }
+    }
+    stage('Build image') {
+      steps { sh 'docker build -t $IMAGE:$TAG -t $IMAGE:latest -f docker/Dockerfile .' }
+    }
+    stage('Push image') {
+      steps {
+        // Jenkins credential of type "Username with password" with id dockerhub
+        withCredentials([usernamePassword(credentialsId: 'dockerhub',
+                         usernameVariable: 'U', passwordVariable: 'P')]) {
+          sh 'echo $P | docker login -u $U --password-stdin'
+          sh 'docker push $IMAGE:$TAG && docker push $IMAGE:latest'
+        }
+      }
+    }
+    stage('Deploy to Kubernetes') {
+      steps {
+        sh '''
+          cd kubernetes/overlays/dev
+          kustomize edit set image youruser/devops-app=$IMAGE:$TAG
+          kubectl apply -k .
+        '''
+      }
+    }
+  }
+}
